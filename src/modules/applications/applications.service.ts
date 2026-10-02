@@ -462,6 +462,7 @@ export class ApplicationsService {
 
     return {
       applicationId: app.applicationId,
+      email: app.email,
 
       status: app.status,
 
