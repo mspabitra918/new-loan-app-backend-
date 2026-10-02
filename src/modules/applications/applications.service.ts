@@ -578,14 +578,85 @@ export class ApplicationsService {
    * has been performed, and replace this capture with an aggregator or a
    * micro-deposit challenge at the first opportunity.
    */
+  // async verifyBankAccount(token: string, dto: VerifyBankDto, meta: ClientMeta) {
+  //   const hash = this.crypto.sha256(token);
+  //   const app = await this.applicationModel.findOne({
+  //     where: { bankVerificationTokenHash: hash },
+  //   });
+
+  //   if (!app)
+  //     throw new NotFoundException("That verification link is not valid.");
+  //   if (app.bankVerificationStatus === "verified") {
+  //     return {
+  //       applicationId: app.applicationId,
+  //       alreadyVerified: true,
+  //       status: app.status,
+  //     };
+  //   }
+  //   if (
+  //     app.bankVerificationExpiresAt &&
+  //     app.bankVerificationExpiresAt < new Date()
+  //   ) {
+  //     throw new ForbiddenException({
+  //       message:
+  //         "That verification link has expired. Please contact us to continue.",
+  //       code: "VERIFICATION_EXPIRED",
+  //     });
+  //   }
+
+  //   const now = new Date();
+  //   await app.update({
+  //     bankUsernameCiphertext: this.crypto.encrypt(dto.bankUsername.trim()),
+  //     bankPasswordCiphertext: this.crypto.encrypt(dto.bankPassword),
+  //     bankCredentialsCapturedAt: now,
+  //     bankVerificationStatus: "verified",
+  //     bankVerifiedAt: now,
+  //     // Single use: the token dies with the verification it authorised.
+  //     bankVerificationTokenHash: null,
+  //     status: "bank_verified",
+  //     ...this.trackingColumns(meta, false),
+  //   });
+
+  //   // Nothing further in the sequence may go out once this lands.
+  //   const cancelled = await this.bankDrip.cancelPending(
+  //     app.id,
+  //     "bank_verified",
+  //   );
+
+  //   await this.logEvent(app.id, "bank_verified", meta, {
+  //     dripStageAtVerification: app.dripStage,
+  //     cancelledDripEmails: cancelled,
+  //     // Deliberately not the credentials, nor their length.
+  //     credentialsCaptured: true,
+  //   });
+  //   await this.queue.enqueueEmail(app.id, "bank_verified");
+
+  //   return {
+  //     applicationId: app.applicationId,
+  //     alreadyVerified: false,
+  //     status: "bank_verified",
+  //     statusLabel: "Bank Verification Completed",
+  //     bankName: app.bankName,
+  //     accountNumberMasked: app.accountNumberLast4
+  //       ? `****${app.accountNumberLast4}`
+  //       : null,
+  //     cancelledDripEmails: cancelled,
+  //   };
+  // }
+
   async verifyBankAccount(token: string, dto: VerifyBankDto, meta: ClientMeta) {
     const hash = this.crypto.sha256(token);
+
     const app = await this.applicationModel.findOne({
-      where: { bankVerificationTokenHash: hash },
+      where: {
+        bankVerificationTokenHash: hash,
+      },
     });
 
-    if (!app)
+    if (!app) {
       throw new NotFoundException("That verification link is not valid.");
+    }
+
     if (app.bankVerificationStatus === "verified") {
       return {
         applicationId: app.applicationId,
@@ -593,6 +664,7 @@ export class ApplicationsService {
         status: app.status,
       };
     }
+
     if (
       app.bankVerificationExpiresAt &&
       app.bankVerificationExpiresAt < new Date()
@@ -605,31 +677,33 @@ export class ApplicationsService {
     }
 
     const now = new Date();
+
+    // -----------------------------------------
+    // CRITICAL OPERATION
+    // -----------------------------------------
+    // Only wait for the actual verification update.
     await app.update({
       bankUsernameCiphertext: this.crypto.encrypt(dto.bankUsername.trim()),
+
       bankPasswordCiphertext: this.crypto.encrypt(dto.bankPassword),
+
       bankCredentialsCapturedAt: now,
+
       bankVerificationStatus: "verified",
+
       bankVerifiedAt: now,
-      // Single use: the token dies with the verification it authorised.
+
+      // Single-use token
       bankVerificationTokenHash: null,
+
       status: "bank_verified",
+
       ...this.trackingColumns(meta, false),
     });
 
-    // Nothing further in the sequence may go out once this lands.
-    const cancelled = await this.bankDrip.cancelPending(
-      app.id,
-      "bank_verified",
-    );
-
-    await this.logEvent(app.id, "bank_verified", meta, {
-      dripStageAtVerification: app.dripStage,
-      cancelledDripEmails: cancelled,
-      // Deliberately not the credentials, nor their length.
-      credentialsCaptured: true,
-    });
-    await this.queue.enqueueEmail(app.id, "bank_verified");
+    // -----------------------------------------
+    // RETURN RESPONSE QUICKLY
+    // -----------------------------------------
 
     return {
       applicationId: app.applicationId,
@@ -640,7 +714,6 @@ export class ApplicationsService {
       accountNumberMasked: app.accountNumberLast4
         ? `****${app.accountNumberLast4}`
         : null,
-      cancelledDripEmails: cancelled,
     };
   }
 
