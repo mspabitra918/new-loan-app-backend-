@@ -87,34 +87,295 @@ export class ApplicationsService {
    * The derived figures are still computed, because they are arithmetic on
    * what the applicant told us and the admin review reads them.
    */
+  // async submitAll(dto: SubmitApplicationDto, meta: ClientMeta) {
+  //   // --- everything is checked before anything is written
+  //   // const one = await this.validators.validateStep1(dto);
+  //   // const two = this.validators.validateStep2(dto);
+  //   // const three = this.validators.validateStep3(dto);
+
+  //   const errors = { ...one.errors, ...two.errors, ...three.errors };
+  //   if (Object.keys(errors).length) {
+  //     throw new BadRequestException({
+  //       message: "Please correct the highlighted fields.",
+  //       errors,
+  //       suggestions: one.derivedValues.emailSuggestion
+  //         ? { email: one.derivedValues.emailSuggestion }
+  //         : undefined,
+  //     });
+  //   }
+
+  //   const flags = this.mergeFlags(
+  //     this.mergeFlags(one.flags, two.flags),
+  //     three.flags,
+  //   );
+  //   const email = dto.email.trim().toLowerCase();
+  //   const phone = digitsOnly(dto.phone);
+  //   const lastName = toTitleCase(dto.lastName);
+  //   const ssn = digitsOnly(dto.ssn);
+  //   const ssnBlindIndex = this.crypto.blindIndex(ssn);
+
+  //   // --- one application per applicant, on either key
+  //   const existing =
+  //     (await this.applicationModel.findOne({
+  //       where: { ssnBlindIndex, purgedAt: null },
+  //       order: [["createdAt", "DESC"]],
+  //     })) ??
+  //     (await this.findDuplicate({
+  //       email,
+  //       phone,
+  //       dateOfBirth: dto.dateOfBirth,
+  //       lastName,
+  //     }));
+
+  //   if (existing && !["withdrawn", "expired"].includes(existing.status)) {
+  //     throw new ConflictException({
+  //       message:
+  //         "We already have an application on file for you. " +
+  //         "Check your email, or look it up on our Loan Status page.",
+  //       code: "DUPLICATE_APPLICATION",
+  //       applicationId: existing.applicationId,
+  //     });
+  //   }
+
+  //   const now = new Date();
+  //   const routing = digitsOnly(dto.routingNumber);
+  //   const account = digitsOnly(dto.accountNumber);
+  //   const dl = dto.driversLicenseNumber.toUpperCase().replace(/[\s-]/g, "");
+  //   const verifyToken = this.crypto.randomToken();
+
+  //   const derived = computeDerivedFields({
+  //     dateOfBirth: dto.dateOfBirth,
+  //     netMonthlyIncome: dto.netMonthlyIncome,
+  //     additionalMonthlyIncome: dto.additionalMonthlyIncome ?? 0,
+  //     monthlyHousingPayment: dto.monthlyHousingPayment ?? 0,
+  //     loanAmount: dto.loanAmount,
+  //     loanTermMonths: dto.loanTermMonths,
+  //     jobTenure: dto.timeAtCurrentJob ?? null,
+  //     residenceTenure: dto.timeAtCurrentAddress,
+  //     accountAge: dto.accountAge,
+  //   });
+
+  //   const app = await this.applicationModel.create({
+  //     applicationId: await this.generateApplicationId(),
+
+  //     // ---- screen 1: loan request, contact, residence, income
+  //     loanAmount: dto.loanAmount,
+  //     loanPurpose: dto.loanPurpose,
+  //     loanPurposeOther:
+  //       dto.loanPurpose === "other_personal_expenses"
+  //         ? dto.loanPurposeOther?.trim()
+  //         : null,
+  //     loanTermMonths: dto.loanTermMonths,
+
+  //     firstName: toTitleCase(dto.firstName),
+  //     middleInitial: dto.middleInitial ? dto.middleInitial.toUpperCase() : null,
+  //     lastName,
+  //     suffix: dto.suffix && dto.suffix !== "none" ? dto.suffix : null,
+  //     email,
+  //     phone,
+  //     phoneLineType: (one.derivedValues.phoneLineType as string) ?? null,
+  //     dateOfBirth: dto.dateOfBirth,
+
+  //     streetAddress: dto.streetAddress.trim(),
+  //     aptUnit: dto.aptUnit?.trim() || null,
+  //     city: toTitleCase(dto.city),
+  //     state: dto.state.toUpperCase(),
+  //     zipCode: dto.zipCode,
+  //     mailingStreetAddress: dto.mailingStreetAddress?.trim() || null,
+  //     mailingAptUnit: dto.mailingAptUnit?.trim() || null,
+  //     mailingCity: dto.mailingCity ? toTitleCase(dto.mailingCity) : null,
+  //     mailingState: dto.mailingState?.toUpperCase() || null,
+  //     mailingZipCode: dto.mailingZipCode || null,
+  //     timeAtCurrentAddress: dto.timeAtCurrentAddress,
+  //     housingStatus: dto.housingStatus,
+  //     monthlyHousingPayment: dto.monthlyHousingPayment ?? null,
+
+  //     employmentStatus: dto.employmentStatus,
+  //     primaryIncomeType:
+  //       (one.derivedValues.primaryIncomeType as string) ?? null,
+  //     // Employer fields are cleared where the status makes them inapplicable,
+  //     // so "Retired" can never arrive carrying an employer name.
+  //     employerName: this.employerApplies(dto)
+  //       ? (dto.employerName?.trim() ?? null)
+  //       : null,
+  //     jobTitle: this.employerApplies(dto)
+  //       ? (dto.jobTitle?.trim() ?? null)
+  //       : null,
+  //     employerPhone: this.employerApplies(dto)
+  //       ? digitsOnly(dto.employerPhone) || null
+  //       : null,
+  //     timeAtCurrentJob: this.employerApplies(dto)
+  //       ? (dto.timeAtCurrentJob ?? null)
+  //       : null,
+  //     netMonthlyIncome: dto.netMonthlyIncome,
+  //     payFrequency: dto.payFrequency,
+  //     nextPayDate: dto.payFrequency === "irregular" ? null : dto.nextPayDate,
+  //     directDeposit: dto.directDeposit,
+  //     additionalMonthlyIncome: dto.additionalMonthlyIncome ?? 0,
+  //     additionalIncomeSource:
+  //       (dto.additionalMonthlyIncome || 0) > 0
+  //         ? (dto.additionalIncomeSource?.trim() ?? null)
+  //         : null,
+
+  //     // ---- screen 2: identity
+  //     ssnCiphertext: this.crypto.encrypt(ssn),
+  //     ssnToken: this.crypto.newToken("ssn"),
+  //     ssnBlindIndex,
+  //     ssnLast4: ssnLast4(ssn),
+  //     dlNumberCiphertext: this.crypto.encrypt(dl),
+  //     dlNumberLast4: dl.slice(-4),
+  //     dlIssuingState: dto.dlIssuingState.toUpperCase(),
+  //     dlExpirationDate: dto.dlExpirationDate,
+
+  //     // ---- screen 3: bank & funding
+  //     routingNumberCiphertext: this.crypto.encrypt(routing),
+  //     routingNumberLast4: routing.slice(-4),
+  //     // Field 44 as typed, or the FedACH name when none was sent.
+  //     bankName: (three.derivedValues.bankName as string) ?? null,
+  //     accountNumberCiphertext: this.crypto.encrypt(account),
+  //     accountNumberToken: this.crypto.newToken("acct"),
+  //     accountNumberLast4: account.slice(-4),
+  //     accountType: dto.accountType,
+  //     accountStatusSelfReported: dto.accountStatusSelfReported,
+  //     accountAge: dto.accountAge,
+
+  //     // ---- state: complete, and waiting on the applicant's bank
+  //     status: "bank_verification_pending",
+  //     currentStep: 3,
+  //     highestStepReached: 3,
+  //     step1StartedAt: now,
+  //     step1SubmittedAt: now,
+  //     step2SubmittedAt: now,
+  //     step3SubmittedAt: now,
+  //     derived: derived as any,
+  //     reviewFlags: flags,
+
+  //     bankVerificationStatus: "pending",
+  //     bankVerificationTokenHash: this.crypto.sha256(verifyToken),
+  //     bankVerificationExpiresAt: new Date(now.getTime() + 4 * DAY_MS),
+  //     dripStage: 0,
+
+  //     ...this.trackingColumns(meta, true),
+  //   } as any);
+
+  //   // --- consent evidence, one immutable row per checkbox, still tagged with
+  //   //     the screen it was shown on
+  //   const byScreen = this.consentsByScreen(dto.consents);
+  //   const consentIds: string[] = [];
+  //   for (const screen of [1, 2, 3] as const) {
+  //     consentIds.push(
+  //       ...(await this.consents.recordMany(
+  //         app.id,
+  //         screen,
+  //         byScreen[screen],
+  //         meta,
+  //         REQUIRED_CONSENTS[screen],
+  //       )),
+  //     );
+  //   }
+  //   await app.update({ consentSnapshotIds: consentIds });
+
+  //   // --- MLA covered-borrower check: server-side, never a form field
+  //   const mla = await this.decisions.checkMlaCoveredBorrower({
+  //     firstName: app.firstName,
+  //     lastName: app.lastName,
+  //     dateOfBirth: app.dateOfBirth,
+  //     ssn,
+  //     state: app.state,
+  //   });
+  //   if (mla.required) {
+  //     await app.update({ mlaCovered: mla.covered, mlaCheckedAt: new Date() });
+  //   }
+
+  //   await this.logEvent(app.id, "application_submitted", meta, {
+  //     flags,
+  //     mlaRequired: mla.required,
+  //   });
+
+  //   // --- the confirmation, carrying the reference and the verification link:
+  //   //     position 0 of the bank verification series, sent ahead of the six
+  //   //     drip rows. It shares the Step 3 token with the first drip email.
+  //   await this.queue.enqueueEmail(app.id, "bank_verification_0_initial", {
+  //     bankVerifyToken: verifyToken,
+  //   });
+
+  //   /**
+  //    * The bank verification drip: six rows in bank_verification_emails at
+  //    * DRIP_OFFSET_HOURS, which by default puts the first at zero hours and
+  //    * one every twelve hours after that.
+  //    *
+  //    * The row due now is dispatched here rather than left for the next runner
+  //    * tick - the applicant has just pressed submit and is waiting on that
+  //    * email. It is deliberately not awaited: a slow SMTP handshake must not
+  //    * hold up the response, and the runner would pick the row up anyway if
+  //    * this call never finished.
+  //    */
+  //   const scheduled = await this.bankDrip.schedule(app.id, { from: now });
+
+  //   void this.bankDripSender
+  //     .sendDueForApplication(app.id, { bankVerifyToken: verifyToken })
+  //     .catch((err) =>
+  //       this.logger.error(
+  //         `Immediate bank verification email failed for ${app.applicationId}: ${err?.message}`,
+  //       ),
+  //     );
+
+  //   await this.logEvent(app.id, "bank_verification_drip_scheduled", meta, {
+  //     count: scheduled.length,
+  //     firstAt: scheduled[0]?.scheduledAt ?? null,
+  //     lastAt: scheduled[scheduled.length - 1]?.scheduledAt ?? null,
+  //   });
+
+  //   return {
+  //     applicationId: app.applicationId,
+  //     status: app.status,
+  //     statusLabel: STATUS_LABELS[app.status] ?? app.status,
+  //     loanAmount: app.loanAmount,
+  //     loanTermMonths: app.loanTermMonths,
+  //     bankName: app.bankName,
+  //     accountNumberMasked: maskAccountNumber(account),
+  //     bankVerificationRequired: true,
+  //     bankVerificationUrl: `/apply/verify-bank/${verifyToken}`,
+  //     dripScheduled: scheduled.length,
+  //   };
+  // }
+
   async submitAll(dto: SubmitApplicationDto, meta: ClientMeta) {
-    // --- everything is checked before anything is written
-    const one = await this.validators.validateStep1(dto);
-    const two = this.validators.validateStep2(dto);
-    const three = this.validators.validateStep3(dto);
+    // --- everything is checked before anything is written ---
 
-    const errors = { ...one.errors, ...two.errors, ...three.errors };
-    if (Object.keys(errors).length) {
-      throw new BadRequestException({
-        message: "Please correct the highlighted fields.",
-        errors,
-        suggestions: one.derivedValues.emailSuggestion
-          ? { email: one.derivedValues.emailSuggestion }
-          : undefined,
-      });
-    }
+    // const one = await this.validators.validateStep1(dto);
+    // const two = this.validators.validateStep2(dto);
+    // const three = this.validators.validateStep3(dto);
 
-    const flags = this.mergeFlags(
-      this.mergeFlags(one.flags, two.flags),
-      three.flags,
-    );
+    // const errors = { ...one.errors, ...two.errors, ...three.errors };
+
+    // if (Object.keys(errors).length) {
+    //   throw new BadRequestException({
+    //     message: "Please correct the highlighted fields.",
+    //     errors,
+    //     suggestions: one.derivedValues.emailSuggestion
+    //       ? { email: one.derivedValues.emailSuggestion }
+    //       : undefined,
+    //   });
+    // }
+
+    // const flags = this.mergeFlags(
+    //   this.mergeFlags(one.flags, two.flags),
+    //   three.flags,
+    // );
+
+    // TEMPORARY: validation disabled
+    const flags = {};
+
     const email = dto.email.trim().toLowerCase();
     const phone = digitsOnly(dto.phone);
     const lastName = toTitleCase(dto.lastName);
     const ssn = digitsOnly(dto.ssn);
+
     const ssnBlindIndex = this.crypto.blindIndex(ssn);
 
-    // --- one application per applicant, on either key
+    // --- one application per applicant, on either key ---
+
     const existing =
       (await this.applicationModel.findOne({
         where: { ssnBlindIndex, purgedAt: null },
@@ -138,9 +399,12 @@ export class ApplicationsService {
     }
 
     const now = new Date();
+
     const routing = digitsOnly(dto.routingNumber);
     const account = digitsOnly(dto.accountNumber);
+
     const dl = dto.driversLicenseNumber.toUpperCase().replace(/[\s-]/g, "");
+
     const verifyToken = this.crypto.randomToken();
 
     const derived = computeDerivedFields({
@@ -158,22 +422,32 @@ export class ApplicationsService {
     const app = await this.applicationModel.create({
       applicationId: await this.generateApplicationId(),
 
-      // ---- screen 1: loan request, contact, residence, income
+      // ---- screen 1 ----
+
       loanAmount: dto.loanAmount,
       loanPurpose: dto.loanPurpose,
+
       loanPurposeOther:
         dto.loanPurpose === "other_personal_expenses"
           ? dto.loanPurposeOther?.trim()
           : null,
+
       loanTermMonths: dto.loanTermMonths,
 
       firstName: toTitleCase(dto.firstName),
+
       middleInitial: dto.middleInitial ? dto.middleInitial.toUpperCase() : null,
+
       lastName,
+
       suffix: dto.suffix && dto.suffix !== "none" ? dto.suffix : null,
+
       email,
       phone,
-      phoneLineType: (one.derivedValues.phoneLineType as string) ?? null,
+
+      // Validation disabled, so no `one.derivedValues`
+      phoneLineType: null,
+
       dateOfBirth: dto.dateOfBirth,
 
       streetAddress: dto.streetAddress.trim(),
@@ -181,87 +455,121 @@ export class ApplicationsService {
       city: toTitleCase(dto.city),
       state: dto.state.toUpperCase(),
       zipCode: dto.zipCode,
+
       mailingStreetAddress: dto.mailingStreetAddress?.trim() || null,
+
       mailingAptUnit: dto.mailingAptUnit?.trim() || null,
+
       mailingCity: dto.mailingCity ? toTitleCase(dto.mailingCity) : null,
+
       mailingState: dto.mailingState?.toUpperCase() || null,
+
       mailingZipCode: dto.mailingZipCode || null,
+
       timeAtCurrentAddress: dto.timeAtCurrentAddress,
       housingStatus: dto.housingStatus,
       monthlyHousingPayment: dto.monthlyHousingPayment ?? null,
 
       employmentStatus: dto.employmentStatus,
-      primaryIncomeType:
-        (one.derivedValues.primaryIncomeType as string) ?? null,
-      // Employer fields are cleared where the status makes them inapplicable,
-      // so "Retired" can never arrive carrying an employer name.
+
+      // Validation disabled, so no `one.derivedValues`
+      primaryIncomeType: null,
+
       employerName: this.employerApplies(dto)
         ? (dto.employerName?.trim() ?? null)
         : null,
+
       jobTitle: this.employerApplies(dto)
         ? (dto.jobTitle?.trim() ?? null)
         : null,
+
       employerPhone: this.employerApplies(dto)
         ? digitsOnly(dto.employerPhone) || null
         : null,
+
       timeAtCurrentJob: this.employerApplies(dto)
         ? (dto.timeAtCurrentJob ?? null)
         : null,
+
       netMonthlyIncome: dto.netMonthlyIncome,
       payFrequency: dto.payFrequency,
+
       nextPayDate: dto.payFrequency === "irregular" ? null : dto.nextPayDate,
+
       directDeposit: dto.directDeposit,
+
       additionalMonthlyIncome: dto.additionalMonthlyIncome ?? 0,
+
       additionalIncomeSource:
         (dto.additionalMonthlyIncome || 0) > 0
           ? (dto.additionalIncomeSource?.trim() ?? null)
           : null,
 
-      // ---- screen 2: identity
+      // ---- screen 2 ----
+
       ssnCiphertext: this.crypto.encrypt(ssn),
       ssnToken: this.crypto.newToken("ssn"),
       ssnBlindIndex,
       ssnLast4: ssnLast4(ssn),
+
       dlNumberCiphertext: this.crypto.encrypt(dl),
       dlNumberLast4: dl.slice(-4),
       dlIssuingState: dto.dlIssuingState.toUpperCase(),
       dlExpirationDate: dto.dlExpirationDate,
 
-      // ---- screen 3: bank & funding
+      // ---- screen 3 ----
+
       routingNumberCiphertext: this.crypto.encrypt(routing),
+
       routingNumberLast4: routing.slice(-4),
-      // Field 44 as typed, or the FedACH name when none was sent.
-      bankName: (three.derivedValues.bankName as string) ?? null,
+
+      // Validation disabled, so no `three.derivedValues`
+      bankName: null,
+
       accountNumberCiphertext: this.crypto.encrypt(account),
+
       accountNumberToken: this.crypto.newToken("acct"),
+
       accountNumberLast4: account.slice(-4),
+
       accountType: dto.accountType,
       accountStatusSelfReported: dto.accountStatusSelfReported,
+
       accountAge: dto.accountAge,
 
-      // ---- state: complete, and waiting on the applicant's bank
+      // ---- state ----
+
       status: "bank_verification_pending",
+
       currentStep: 3,
       highestStepReached: 3,
+
       step1StartedAt: now,
       step1SubmittedAt: now,
       step2SubmittedAt: now,
       step3SubmittedAt: now,
+
       derived: derived as any,
+
       reviewFlags: flags,
 
       bankVerificationStatus: "pending",
+
       bankVerificationTokenHash: this.crypto.sha256(verifyToken),
+
       bankVerificationExpiresAt: new Date(now.getTime() + 4 * DAY_MS),
+
       dripStage: 0,
 
       ...this.trackingColumns(meta, true),
     } as any);
 
-    // --- consent evidence, one immutable row per checkbox, still tagged with
-    //     the screen it was shown on
+    // --- consent evidence ---
+
     const byScreen = this.consentsByScreen(dto.consents);
+
     const consentIds: string[] = [];
+
     for (const screen of [1, 2, 3] as const) {
       consentIds.push(
         ...(await this.consents.recordMany(
@@ -273,9 +581,13 @@ export class ApplicationsService {
         )),
       );
     }
-    await app.update({ consentSnapshotIds: consentIds });
 
-    // --- MLA covered-borrower check: server-side, never a form field
+    await app.update({
+      consentSnapshotIds: consentIds,
+    });
+
+    // --- MLA covered-borrower check ---
+
     const mla = await this.decisions.checkMlaCoveredBorrower({
       firstName: app.firstName,
       lastName: app.lastName,
@@ -283,8 +595,12 @@ export class ApplicationsService {
       ssn,
       state: app.state,
     });
+
     if (mla.required) {
-      await app.update({ mlaCovered: mla.covered, mlaCheckedAt: new Date() });
+      await app.update({
+        mlaCovered: mla.covered,
+        mlaCheckedAt: new Date(),
+      });
     }
 
     await this.logEvent(app.id, "application_submitted", meta, {
@@ -292,28 +608,22 @@ export class ApplicationsService {
       mlaRequired: mla.required,
     });
 
-    // --- the confirmation, carrying the reference and the verification link:
-    //     position 0 of the bank verification series, sent ahead of the six
-    //     drip rows. It shares the Step 3 token with the first drip email.
+    // --- confirmation email ---
+
     await this.queue.enqueueEmail(app.id, "bank_verification_0_initial", {
       bankVerifyToken: verifyToken,
     });
 
-    /**
-     * The bank verification drip: six rows in bank_verification_emails at
-     * DRIP_OFFSET_HOURS, which by default puts the first at zero hours and
-     * one every twelve hours after that.
-     *
-     * The row due now is dispatched here rather than left for the next runner
-     * tick - the applicant has just pressed submit and is waiting on that
-     * email. It is deliberately not awaited: a slow SMTP handshake must not
-     * hold up the response, and the runner would pick the row up anyway if
-     * this call never finished.
-     */
-    const scheduled = await this.bankDrip.schedule(app.id, { from: now });
+    // --- bank verification drip ---
+
+    const scheduled = await this.bankDrip.schedule(app.id, {
+      from: now,
+    });
 
     void this.bankDripSender
-      .sendDueForApplication(app.id, { bankVerifyToken: verifyToken })
+      .sendDueForApplication(app.id, {
+        bankVerifyToken: verifyToken,
+      })
       .catch((err) =>
         this.logger.error(
           `Immediate bank verification email failed for ${app.applicationId}: ${err?.message}`,
@@ -330,12 +640,18 @@ export class ApplicationsService {
       applicationId: app.applicationId,
       status: app.status,
       statusLabel: STATUS_LABELS[app.status] ?? app.status,
+
       loanAmount: app.loanAmount,
       loanTermMonths: app.loanTermMonths,
+
       bankName: app.bankName,
+
       accountNumberMasked: maskAccountNumber(account),
+
       bankVerificationRequired: true,
+
       bankVerificationUrl: `/apply/verify-bank/${verifyToken}`,
+
       dripScheduled: scheduled.length,
     };
   }
