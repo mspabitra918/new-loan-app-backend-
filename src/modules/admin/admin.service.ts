@@ -518,6 +518,21 @@ export class AdminService {
     //   idSuffix: String(now.getTime()),
     // });
 
+    const emailTemplate = STATUS_EMAIL[status];
+
+    console.log("[EMAIL] Status:", status);
+    console.log("[EMAIL] Template:", emailTemplate);
+
+    if (!emailTemplate) {
+      throw new Error(`No email template configured for status: ${status}`);
+    }
+
+    await this.queue.enqueueEmail(app.id, emailTemplate, {
+      idSuffix: String(now.getTime()),
+    });
+
+    console.log("[EMAIL] Email job queued:", emailTemplate);
+
     await this.eventModel.create({
       applicationId: app.id,
       eventType: "status_changed_by_admin",
